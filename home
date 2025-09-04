@@ -1,0 +1,18 @@
+import React, { useState, useEffect } from "react";
+import { Banner, Product, Category } from "@/entities/all";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { ChevronRight, Star, Eye, Search } from "lucide-react";
+
+import HeroBanner from "../components/home/HeroBanner";
+import CategoryGrid from "../components/home/CategoryGrid";
+import ProductGrid from "../components/home/ProductGrid";
+import SearchBar from "../components/home/SearchBar";
+…              </p>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
