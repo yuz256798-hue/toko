@@ -1,0 +1,177 @@
+
+import React, { useState, useEffect, useCallback } from "react";
+import { Product, User } from "@/entities/all";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { ArrowLeft, Share2, Heart, ShoppingCart, Eye, EyeOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+import ImageGallery from "../components/product/ImageGallery";
+import PriceDisplay from "../components/product/PriceDisplay";
+
+export default function ProductDetail() {
+  const navigate = useNavigate();
+  const [product, setProduct] = useState(null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showBackendPrice, setShowBackendPrice] = useState(false);
+
+  const loadData = useCallback(async () => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const productId = urlParams.get('id');
+      
+      if (!productId) {
+        navigate(createPageUrl("Home"));
+        return;
+      }
+
+      const [productData, userData] = await Promise.all([
+        Product.list().then(products => products.find(p => p.id === productId)),
+        User.me().catch(() => null)
+      ]);
+
+      setProduct(productData);
+      setUser(userData);
+    } catch (error) {
+      console.error("加载商品详情失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]); // Added navigate to dependency array
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]); // Added loadData to dependency array
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product.name,
+          text: product.description,
+          url: window.location.href,
+        });
+      } catch (error) {
+        console.log('分享取消');
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('链接已复制到剪贴板');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">商品不存在</p>
+          <Button onClick={() => navigate(createPageUrl("Home"))}>
+            返回首页
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* 顶部导航 */}
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-200">
+        <div className="px-4 py-4 flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900 truncate flex-1 mx-4">
+            {product.name}
+          </h1>
+          <button
+            onClick={handleShare}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      <div className="pb-6">
+        {/* 商品图片 */}
+        <div className="bg-gray-50">
+          <ImageGallery images={product.images || []} />
+        </div>
+
+        {/* 商品信息 */}
+        <div className="px-4 py-6 space-y-6">
+          {/* 基本信息 */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {product.name}
+            </h1>
+            
+            <div className="flex items-center gap-4 mb-4">
+              <PriceDisplay 
+                displayPrice={product.display_price}
+                backendPrice={product.backend_price}
+                showBackendPrice={showBackendPrice}
+              />
+              
+              {/* 管理员可查看后台价格 */}
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => setShowBackendPrice(!showBackendPrice)}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  {showBackendPrice ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showBackendPrice ? '隐藏后台价格' : '显示后台价格'}
+                </button>
+              )}
+            </div>
+
+            {product.category_name && (
+              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-orange-50 text-orange-600 border border-orange-200">
+                {product.category_name}
+              </div>
+            )}
+          </div>
+
+          {/* 商品描述 */}
+          {product.description && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">商品详情</h3>
+              <div className="prose max-w-none">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 底部操作栏 */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex items-center gap-3">
+          <button className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+            <Heart className="w-5 h-5" />
+            收藏
+          </button>
+          <button className="flex-1 bg-orange-500 text-white py-3 px-4 rounded-xl font-medium hover:bg-orange-600 transition-colors flex items-center justify-center gap-2">
+            <ShoppingCart className="w-5 h-5" />
+            立即购买
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
